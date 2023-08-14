@@ -1,0 +1,4 @@
+name = "FutharkCall"
+uuid = "8f689441-03a1-40fd-a413-9af23a82466c"
+authors = ["Joshua Niemelä <josh@jniemela.dk>"]
+version = "0.1.0"
