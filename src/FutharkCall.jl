@@ -1,2 +1,3 @@
-using Test
-const lib = "src/testlib.so"
+module FutharkCall
+
+end
