@@ -54,3 +54,22 @@ println("Output: $output")
 println("Expected output: $expected_output")
 
 @assert output == expected_output
+
+
+input = [1.0, 2.0, 3.0, 4.0, 5.0]
+function average(xs)::Float64
+    return sum(xs) / length(xs)
+end
+futhark_array = @ccall lib.futhark_new_f64_1d(futhark_context::Ptr{Cvoid},
+                                    input::Ptr{Float64},
+                                    length(input)::Int32)::Ptr{Cvoid}
+
+# entry average (xs: []f64) = reduce (+) 0 xs / f64.i64 (length xs)
+output = Ref{Float64}(0.0)
+@ccall lib.futhark_entry_average(futhark_context::Ptr{Cvoid},
+                                    output::Ptr{Float64},
+                                    futhark_array::Ptr{Cvoid})::Int32
+println("Input: $input")
+println("Output: $(output[])")
+println("Expected output: $(average(input))")
+@assert output[] == average(input)
