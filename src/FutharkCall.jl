@@ -41,7 +41,6 @@ futhark_array = Ref{Ptr{Cvoid}}(0)
 
 
 
-# output should be an array of length 4 with type i32
 output = zeros(Int32, input)
 
 # int futhark_values_i32_1d(struct futhark_context *ctx, struct futhark_i32_1d *arr, int32_t *data);
