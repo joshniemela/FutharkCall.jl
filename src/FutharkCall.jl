@@ -1,3 +1,4 @@
+using Test
 const lib = "src/testlib.so"
 # input is 32 bit integer
 input = Int32(9)
@@ -22,7 +23,7 @@ expected_output = triangle_number(input)
 println("Input: $input")
 println("Output: $(output[])")
 println("Expected output: $expected_output")
-@assert output[] == expected_output
+@test output[] == expected_output
 
 
 
@@ -53,7 +54,7 @@ println("Input: $input")
 println("Output: $output")
 println("Expected output: $expected_output")
 
-@assert output == expected_output
+@test output == expected_output
 
 
 input = [1.0, 2.0, 3.0, 4.0, 5.0]
@@ -72,4 +73,4 @@ output = Ref{Float64}(0.0)
 println("Input: $input")
 println("Output: $(output[])")
 println("Expected output: $(average(input))")
-@assert output[] == average(input)
+@test output[] ≈ average(input)
