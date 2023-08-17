@@ -2,20 +2,6 @@
 
 const ExitStatus = Int32
 
-futhark_types = Dict(
-    "i8" => Int8,
-    "i16" => Int16,
-    "i32" => Int32,
-    "i64" => Int64,
-    "u8" => UInt8,
-    "u16" => UInt16,
-    "u32" => UInt32,
-    "u64" => UInt64,
-    "f32" => Float32,
-    "f64" => Float64,
-    "bool" => Bool,
-)
-
 lib_path = "lib"
 so_path = joinpath(lib_path, "testlib.so")
 manifest_path = joinpath(lib_path, "testlib.json")
@@ -75,7 +61,23 @@ function generate_futhark_types(array_types)
     end
 end
 =#
+
+
+
 module FutharkCall
+const FUTHARK_PRMITIVES = Dict(
+    Int8 => "i8",
+    Int16 => "i16",
+    Int32 => "i32",
+    Int64 => "i64",
+    UInt8 => "u8",
+    UInt16 => "u16",
+    UInt32 => "u32",
+    UInt64 => "u64",
+    Float32 => "f32",
+    Float64 => "f64",
+    Bool => "bool"
+)
 export generate_futhark_library
 using JSON
 function generate_futhark_library(library_path)
@@ -95,6 +97,8 @@ function generate_futhark_library(library_path)
     manifest = JSON.parsefile(manifest_file)
     manifest["backend"] == "c" || error("Only the C backend has been implemented")
 
+    println("Generating library $lib_name from $lib and $manifest_file")
+    println("Backend: $(manifest["backend"])")
 
     @eval module $lib_name
     export FutharkContextConfig, FutharkContext
@@ -118,8 +122,32 @@ function generate_futhark_library(library_path)
     FutharkContext(config::FutharkContextConfig) = make_context(config)
     FutharkContext() = FutharkContext(FutharkContextConfig())
 
-
+    futhark_types = Dict{DataType, String}()
+    for (key, value) in $FUTHARK_PRMITIVES
+        futhark_types[key] = value
     end
+
+    types = $(manifest["types"])
+    for (name, props) in types
+        props["kind"] == "array" || error("Only arrays are supported, got $(props["kind"])")
+        println("Generating type $name")
+        rank = props["rank"]
+        rank == 1 || error("Only rank 1 arrays are supported, got $rank")
+        elemtype = props["elemtype"]
+        struct_name = split(props["ctype"], ' ')[2] |> uppercasefirst |> Symbol
+        @eval begin
+            struct $(split(props["ctype"], ' ')[2] |> uppercasefirst |> Symbol
+                ctx::FutharkContext
+                data::Ptr{Cvoid}
+            end
+        end
+
+
+
+        println(props)
+    end
+
+end
 end
 
 end
