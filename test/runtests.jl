@@ -1,5 +1,5 @@
 using Test
-const lib = "../src/testlib.so"
+const lib = "lib/testlib.so"
 futhark_context_config = @ccall lib.futhark_context_config_new()::Ptr{Cvoid}
 futhark_context = @ccall lib.futhark_context_new(futhark_context_config::Ptr{Cvoid})::Ptr{Cvoid}
 
