@@ -1,4 +1,4 @@
-using JSON
+#=using JSON
 
 const ExitStatus = Int32
 
@@ -74,31 +74,52 @@ function generate_futhark_types(array_types)
 
     end
 end
-
-
-
+=#
+module FutharkCall
+export generate_futhark_library
+using JSON
 function generate_futhark_library(library_path)
     isdir(library_path) || error("library_path must be a directory")
     # there should be one json and one so file
     so_files = filter(x -> endswith(x, ".so"), readdir(library_path))
     length(so_files) == 1 || error("library_path must contain exactly library file (*.so)")
-    so_file = joinpath(library_path, so_files[1])
+    lib = joinpath(library_path, so_files[1])
     manifest_files = filter(x -> endswith(x, ".json"), readdir(library_path))
     length(manifest_files) == 1 || error("library_path must contain exactly one manifest file (*.json)")
     manifest_file = joinpath(library_path, manifest_files[1])
-    split(so_file, ".so")[1] == split(manifest_file, ".json")[1] || error("library_path must contain a manifest and library file with the same name")
+    split(lib, ".so")[1] == split(manifest_file, ".json")[1] || error("library_path must contain a manifest and library file with the same name")
 
     # remove the lib/ part of the library path
-    lib_name = basename(so_file) |> x -> split(x, ".so")[1] |> uppercasefirst |> Symbol
+    lib_name = basename(lib) |> x -> split(x, ".so")[1] |> uppercasefirst |> Symbol
 
     manifest = JSON.parsefile(manifest_file)
     manifest["backend"] == "c" || error("Only the C backend has been implemented")
 
-    @eval module $lib_name
-    struct FutharkContext
-        _data::Ptr{Cvoid}
-    end
-    end
 
+    @eval module $lib_name
+    export FutharkContextConfig, FutharkContext
+
+    struct FutharkContextConfig
+        data::Ptr{Cvoid}
+    end
+    struct FutharkContext
+        data::Ptr{Cvoid}
+    end
+    function make_context_config()
+        config = @ccall $lib.futhark_context_config_new()::Ptr{Cvoid}
+        FutharkContextConfig(config)
+    end
+    FutharkContextConfig() = make_context_config()
+
+    function make_context(config::FutharkContextConfig)
+        context = @ccall $lib.futhark_context_new(config.data::Ptr{Cvoid})::Ptr{Cvoid}
+        FutharkContext(context)
+    end
+    FutharkContext(config::FutharkContextConfig) = make_context(config)
+    FutharkContext() = FutharkContext(FutharkContextConfig())
+
+
+    end
+end
 
 end

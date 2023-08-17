@@ -1,8 +1,14 @@
 using Test
-const lib = "lib/testlib.so"
-futhark_context_config = @ccall lib.futhark_context_config_new()::Ptr{Cvoid}
-futhark_context = @ccall lib.futhark_context_new(futhark_context_config::Ptr{Cvoid})::Ptr{Cvoid}
+using FutharkCall
+const lib_path = "../lib"
+const lib = joinpath(lib_path, "testlib.so")
+generate_futhark_library(lib_path)
+# import FutharkCall.Testlib to Testlib
+import FutharkCall.Testlib as Testlib
 
+#futhark_context_config = @ccall lib.futhark_context_config_new()::Ptr{Cvoid}
+#futhark_context = @ccall lib.futhark_context_new(futhark_context_config::Ptr{Cvoid})::Ptr{Cvoid}
+futhark_context = Testlib.FutharkContext().data
 
 @testset "Testing triangular numbers function (i32 -> i32)" begin
     test_in = 8
