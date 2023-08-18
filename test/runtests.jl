@@ -59,7 +59,7 @@ end
         return sum(x) / length(x)
     end
     expected = average(test_in)
-    futhark_array = Testlib.new(futhark_context, test_in)
+    futhark_array = Testlib.to_futhark(futhark_context, test_in)
 
     @ccall lib.futhark_entry_average(
         futhark_array.ctx.data::Ptr{Cvoid},

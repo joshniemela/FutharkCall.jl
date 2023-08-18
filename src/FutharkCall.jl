@@ -171,11 +171,11 @@ function generate_futhark_library(library_path)
                 data::Ptr{Cvoid}
             end
             # generate the constructor, this has side effects (creates the futhark array)
-            function new(ctx::FutharkContext, data::Array{$elem_type,$rank})
+            function to_futhark(ctx::FutharkContext, data::Array{$elem_type,$rank})
                 # create the futhark array
                 futhark_array = @ccall $lib.$(props["ops"]["new"])(
                     ctx.data::Ptr{Cvoid},
-                    data::Ptr{$elem_type},
+                    data::Ptr{Cvoid},
                     length(data)::Int32)::Ptr{Cvoid}
                 # create the julia struct
                 $type_name(ctx, futhark_array)
