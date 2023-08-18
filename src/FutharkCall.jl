@@ -80,6 +80,26 @@ const FUTHARK_PRMITIVES = Dict(
 )
 export generate_futhark_library
 using JSON
+
+# this returns a quoted struct definition and the operations for the struct
+# example obj:
+#=
+    "[]f64": {
+      "ctype": "struct futhark_f64_1d *",
+      "elemtype": "f64",
+      "kind": "array",
+      "ops": {
+        "free": "futhark_free_f64_1d",
+        "new": "futhark_new_f64_1d",
+        "shape": "futhark_shape_f64_1d",
+        "values": "futhark_values_f64_1d"
+      },
+      "rank": 1
+    },
+=#
+
+
+
 function generate_futhark_library(library_path)
     isdir(library_path) || error("library_path must be a directory")
     # there should be one json and one so file
@@ -97,6 +117,8 @@ function generate_futhark_library(library_path)
     manifest = JSON.parsefile(manifest_file)
     manifest["backend"] == "c" || error("Only the C backend has been implemented")
 
+    manifest["version"] == "0.24.3" || error("Only version 0.24.3 has been tested")
+
     println("Generating library $lib_name from $lib and $manifest_file")
     println("Backend: $(manifest["backend"])")
 
@@ -109,6 +131,7 @@ function generate_futhark_library(library_path)
     struct FutharkContext
         data::Ptr{Cvoid}
     end
+
     function make_context_config()
         config = @ccall $lib.futhark_context_config_new()::Ptr{Cvoid}
         FutharkContextConfig(config)
@@ -122,7 +145,48 @@ function generate_futhark_library(library_path)
     FutharkContext(config::FutharkContextConfig) = make_context(config)
     FutharkContext() = FutharkContext(FutharkContextConfig())
 
-    futhark_types = Dict{DataType, String}()
+    abstract type AbstractFutharkArray end
+    function generate_array_definitions(lib, props)
+        JULIA_PRIMITIVES = Dict(
+            "i8" => Int8,
+            "i16" => Int16,
+            "i32" => Int32,
+            "i64" => Int64,
+            "u8" => UInt8,
+            "u16" => UInt16,
+            "u32" => UInt32,
+            "u64" => UInt64,
+            "f32" => Float32,
+            "f64" => Float64,
+            "bool" => Bool
+        )
+        type_name = split(props["ctype"], ' ')[2] |> uppercasefirst |> Symbol
+        # use julia primitives from above
+        elem_type = props["elemtype"] |> x -> JULIA_PRIMITIVES[x] |> Symbol
+        rank = props["rank"]
+        struct_type = :($type_name) # this is supposed to be parametric on {T, N}
+        quote
+            # generate the struct definition
+            struct $struct_type <: AbstractFutharkArray
+                ctx::FutharkContext
+                data::Ptr{Cvoid}
+            end
+            # generate the constructor, this has side effects (creates the futhark array)
+            function new(ctx::FutharkContext, data::Array{$elem_type,$rank})
+                # create the futhark array
+                futhark_array = @ccall $lib.$(props["ops"]["new"])(
+                    ctx.data::Ptr{Cvoid},
+                    data::Ptr{$elem_type},
+                    length(data)::Int32)::Ptr{Cvoid}
+                # create the julia struct
+                $struct_type(ctx, futhark_array)
+            end
+
+            # generate the values function
+        end
+    end
+
+    futhark_types = Dict{DataType,String}()
     for (key, value) in $FUTHARK_PRMITIVES
         futhark_types[key] = value
     end
@@ -133,21 +197,11 @@ function generate_futhark_library(library_path)
         println("Generating type $name")
         rank = props["rank"]
         rank == 1 || error("Only rank 1 arrays are supported, got $rank")
-        elemtype = props["elemtype"]
-        struct_name = split(props["ctype"], ' ')[2] |> uppercasefirst |> Symbol
-        @eval begin
-            struct $(split(props["ctype"], ' ')[2] |> uppercasefirst |> Symbol
-                ctx::FutharkContext
-                data::Ptr{Cvoid}
-            end
-        end
-
-
-
-        println(props)
+        # generate structs
+        eval(generate_array_definitions($lib, props))
     end
 
-end
+    end
 end
 
 end
