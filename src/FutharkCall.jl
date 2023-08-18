@@ -164,10 +164,9 @@ function generate_futhark_library(library_path)
         # use julia primitives from above
         elem_type = props["elemtype"] |> x -> JULIA_PRIMITIVES[x] |> Symbol
         rank = props["rank"]
-        struct_type = :($type_name) # this is supposed to be parametric on {T, N}
         quote
             # generate the struct definition
-            struct $struct_type <: AbstractFutharkArray
+            struct $type_name <: AbstractFutharkArray
                 ctx::FutharkContext
                 data::Ptr{Cvoid}
             end
@@ -179,7 +178,7 @@ function generate_futhark_library(library_path)
                     data::Ptr{$elem_type},
                     length(data)::Int32)::Ptr{Cvoid}
                 # create the julia struct
-                $struct_type(ctx, futhark_array)
+                $type_name(ctx, futhark_array)
             end
 
             # generate the values function

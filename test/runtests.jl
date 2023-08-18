@@ -8,7 +8,7 @@ import FutharkCall.Testlib as Testlib
 
 #futhark_context_config = @ccall lib.futhark_context_config_new()::Ptr{Cvoid}
 #futhark_context = @ccall lib.futhark_context_new(futhark_context_config::Ptr{Cvoid})::Ptr{Cvoid}
-futhark_context = Testlib.FutharkContext().data
+futhark_context = Testlib.FutharkContext()
 
 @testset "Testing triangular numbers function (i32 -> i32)" begin
     test_in = 8
@@ -19,7 +19,7 @@ futhark_context = Testlib.FutharkContext().data
     expected = triangular(test_in)
 
     @ccall lib.futhark_entry_triangle(
-        futhark_context::Ptr{Cvoid},
+        futhark_context.data::Ptr{Cvoid},
         test_out::Ptr{Int32},
         test_in::Int32)::Int32
     @test test_out[] == expected
@@ -40,11 +40,11 @@ end
     expected = one_to_n(test_in)
     futhark_array = Ref{Ptr{Cvoid}}(0)
     @ccall lib.futhark_entry_one_to_n(
-        futhark_context::Ptr{Cvoid},
+        futhark_context.data::Ptr{Cvoid},
         futhark_array::Ptr{Ptr{Cvoid}},
         test_in::Int32)::Int32
     @ccall lib.futhark_values_i32_1d(
-        futhark_context::Ptr{Cvoid},
+        futhark_context.data::Ptr{Cvoid},
         futhark_array[]::Ptr{Cvoid},
         test_out::Ptr{Int32})::Int32
 
@@ -59,15 +59,12 @@ end
         return sum(x) / length(x)
     end
     expected = average(test_in)
-    futhark_array = @ccall lib.futhark_new_f64_1d(
-        futhark_context::Ptr{Cvoid},
-        test_in::Ptr{Float64},
-        length(test_in)::Int32)::Ptr{Cvoid}
+    futhark_array = Testlib.new(futhark_context, test_in)
 
     @ccall lib.futhark_entry_average(
-        futhark_context::Ptr{Cvoid},
+        futhark_array.ctx.data::Ptr{Cvoid},
         test_out::Ptr{Float64},
-        futhark_array::Ptr{Cvoid})::Int32
+        futhark_array.data::Ptr{Cvoid})::Int32
 
 
     @test test_out[] == expected
